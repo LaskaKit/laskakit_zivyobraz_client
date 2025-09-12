@@ -6,7 +6,7 @@
 namespace LaskaKit::ZivyObraz {
 
     // interesting headers from zivyobraz
-    struct ZivyobrazHeaders
+    struct Headers
     {
         const char* headerKeys[5] = {
             "Content-Type",
@@ -30,25 +30,30 @@ namespace LaskaKit::ZivyObraz {
         void collect(HTTPClient& httpClient)
         {
             if (httpClient.hasHeader("Content-Type")) {
-                this->contentType = ContentTypeHeaderStrToEnum(httpClient.header("Content-Type"));
+                this->contentType = httpClient.header("Content-Type").c_str();
+                Serial.println(this->contentType);
             }
             if (httpClient.hasHeader("Timestamp")) {
                 this->timestamp = httpClient.header("Timestamp").toInt();
+                Serial.println(this->timestamp);
             }
             if (httpClient.hasHeader("Sleep")) {
                 this->sleep = httpClient.header("Sleep").toInt();
+                Serial.println(this->sleep);
             }
             if (httpClient.hasHeader("Rotate")) {
                 this->rotate =  httpClient.header("Rotate").toInt();
+                Serial.println(this->rotate);
             }
             if (httpClient.hasHeader("Data-Length")) {
                 this->dataLength = httpClient.header("Data-Length").toInt();
+                Serial.println(this->dataLength);
             }
         }
     };
 
 
-    class ZivyobrazUrlBuilder
+    class UrlBuilder
     {
     private:
         const char* baseUrl;
@@ -58,7 +63,7 @@ namespace LaskaKit::ZivyObraz {
         char param_vals[10][20];
 
     public:
-        ZivyobrazUrlBuilder(const char* baseUrl)
+        UrlBuilder(const char* baseUrl)
             : baseUrl(baseUrl)
         {}
 
@@ -90,35 +95,49 @@ namespace LaskaKit::ZivyObraz {
     };
 
 
-    class ZivyobrazClient
+    class Client
     {
     private:
         HTTPClient httpClient;
         char url[256];
-        ZivyobrazHeaders headers;
 
-    public:
-        ZivyobrazClient(
+        size_t totalRead;
+
+        public:
+        Headers headers;
+        Client(
             const String& host,
             const String& mac_address,
             const uint display_width,
             const uint display_height,
             const String& color_type,
             const String& firmware_version
+
         )
         {
-            ZivyobrazUrlBuilder builder(host.c_str());
+            UrlBuilder builder(host.c_str());
             builder.addParam("mac", mac_address.c_str());
             builder.addParam("x", std::to_string(display_width).c_str());
             builder.addParam("y", std::to_string(display_height).c_str());
             builder.addParam("c", color_type.c_str());
             builder.addParam("fw", firmware_version.c_str());
             builder.build(this->url);
+
+
         }
 
-        const ZivyobrazHeaders& getHeaders()
+        // read at most len bytes
+        // returns number of bytes read
+        int read(uint8_t* buf, size_t len)
         {
-            return this->headers;
+            int available = this->available();
+            httpClient.getStream().read(buf + totalRead, available);
+            totalRead += available;
+        }
+
+        size_t available()
+        {
+            return httpClient.getStream().available();
         }
 
         int download(uint8_t* buf)
@@ -134,31 +153,31 @@ namespace LaskaKit::ZivyObraz {
                 return 0;
             }
             this->headers.collect(this->httpClient);
-            this->headers.print();
+            // this->headers.print();
+            // Serial.println(this->headers.contentType);
 
             int totalRead = 0;
             // 100 kb
 
             unsigned long startMillis = millis();
-            while (true) {
-                int available = httpClient.getStream().available();
-                if (available == 0) {
-                    vTaskDelay(10);
-                    // 5 s timeout
-                    if (millis() - startMillis > 300) {
-                        break;
-                    }
-                    continue;
-                } else {
-                    startMillis = millis();
+            while (httpClient.connected()) {
+                size_t available = httpClient.getStream().available();
+                // Serial.println(available);
+                if (available) {
+                    httpClient.getStream().read(buf + totalRead, available);
+                    totalRead += available;
                 }
 
-                if (totalRead + available > 100000) {
+                if (totalRead + available > 5000000) {
                     break;
                 }
+                delay(1);
+            }
 
-                httpClient.getStream().read(buf + totalRead, available);
-                totalRead += available;
+            if (httpClient.connected()) {
+                Serial.println("HTTP connected");
+            } else {
+                Serial.println("HTTP disconnected");
             }
 
             Serial.print("Total read bytes: ");
