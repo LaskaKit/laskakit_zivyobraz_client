@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
 
 namespace LaskaKit::ZivyObraz {
     constexpr size_t MAX_PARAMS = 15;
@@ -21,7 +22,7 @@ namespace LaskaKit::ZivyObraz {
     };
 
 
-    using ZIVYOBRAZ_DRAW_CALLBACK = void (*)(Pixel* rowData, uint16_t row);
+    using ZIVYOBRAZ_DRAW_CALLBACK = std::function<void(Pixel* rowData, uint16_t row)>;
 
 
     struct HttpParam
