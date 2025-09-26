@@ -67,12 +67,8 @@ void StreamingZDEC::newData(const uint8_t* data, size_t datalen)
 
 void StreamingZDEC::newHeaderData(const uint8_t* data, size_t datalen)
 {
-    for (size_t i = 0; i < datalen; i++) {
-        this->currentHeader++;
-        if (this->currentHeader <=2) {
-            this->newPixelData(data + i + 1, datalen - i - 1);
-        }
-    }
+    this->currentHeader = 2;
+    this->newPixelData(data + 2, datalen -2);
 }
 
 void StreamingZDEC::newPixelData(const uint8_t* data, size_t datalen)
@@ -107,7 +103,7 @@ void StreamingZDEC::processRLEByte(uint8_t byte)
             }
             this->currentCol++;
 
-            if (this->currentCol >= this->width - 1) {
+            if (this->currentCol >= this->width) {
                 this->callback(this->rowData, this->currentRow);
                 this->currentCol = 0;
                 this->currentRow++;
