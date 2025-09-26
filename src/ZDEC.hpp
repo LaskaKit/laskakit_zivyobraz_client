@@ -41,7 +41,7 @@ namespace LaskaKit::ZivyObraz {
 
     public:
         StreamingZDEC(uint16_t width, uint16_t height, uint8_t type)
-            : width(width), height(height), type(type), currentRow(0), currentCol(0)
+            : width(width), height(height), type(type), currentRow(0), currentCol(0), currentHeader(0)
         {
             this->rowData = new Pixel[width];
         }
