@@ -51,17 +51,7 @@ namespace LaskaKit::ZivyObraz {
             };
             
             this->client.collectHeaders(headerKeys, 5);
-            
             this->client.GET();
-
-            // dont forget to download headers
-            Serial.println("Try to get header");
-            if (this->client.hasHeader("Timestamp")) {
-                Serial.println("Has header");
-            }
-            if (this->client.hasHeader("Data-Length")) {
-                Serial.println("Has header");
-            }
 
             this->buf = (uint8_t*)malloc(5000000 * sizeof(uint8_t));
             // TODO very careful here
