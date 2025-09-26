@@ -7,7 +7,7 @@
 namespace LaskaKit::ZivyObraz {
     constexpr size_t MAX_PARAMS = 15;
     constexpr size_t MAX_VALUE_LEN = 20;
-    constexpr size_t MAX_KEY_LEN = 10;
+    constexpr size_t MAX_KEY_LEN = 20;
 
 
     struct Pixel
