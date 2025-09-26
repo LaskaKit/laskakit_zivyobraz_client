@@ -40,22 +40,4 @@ namespace LaskaKit::ZivyObraz {
       size_t queryStrLength() const;
       void buildQuery(char* buffer, size_t buflen) const;
     };
-
-    // interesting headers from zivyobraz
-    struct Headers
-    {
-        const char* headerKeys[5] = {
-            "Content-Type",
-            "Timestamp",
-            "Sleep",
-            "Rotate",
-            "Data-Length"
-        };
-
-        const char* contentType = "unknown";
-        int timestamp = -1;
-        int sleep = -1;
-        int rotate = -1;
-        int dataLength = -1;
-    };
 }
