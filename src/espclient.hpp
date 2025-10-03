@@ -7,6 +7,7 @@
 
 namespace LaskaKit::ZivyObraz {
     constexpr size_t MAX_URL_LENGTH = 256;
+    constexpr size_t BUFFER_SIZE = 2048;
 
 
     class EspClient {
@@ -14,19 +15,25 @@ namespace LaskaKit::ZivyObraz {
         HttpParams params;
         HTTPClient client;
         char url[MAX_URL_LENGTH];
-        uint8_t* buf;
+        uint8_t buf[BUFFER_SIZE];
         size_t totalRead;
 
+        StreamingZDEC zDecoder;
+        StreamingBMPDEC bmpDecoder;
+
+        ZIVYOBRAZ_DRAW_CALLBACK callback;
+
+
     public:
-        EspClient(const char* host)
+        EspClient(const char* host, size_t displayWidth, size_t displayHeight, ZIVYOBRAZ_DRAW_CALLBACK callback)
         {
             strncpy(this->url, host, MAX_URL_LENGTH);
+            this->zDecoder = StreamingZDEC(800, 480, 2);
+            this->zDecoder.addCallback(callback);
+            this->bmpDecoder.addCallback(callback);
         }
 
-        ~EspClient()
-        {
-            free(this->buf);
-        }
+        virtual ~EspClient() {}
 
         void addParam(const char* key, const char* value)
         {
@@ -41,7 +48,6 @@ namespace LaskaKit::ZivyObraz {
             Serial.printf("Connecting to: %s\n", this->url);
             this->client.begin(this->url);
             
-            
             const char* headerKeys[5] = {
                 "Content-Type",
                 "Timestamp",
@@ -51,22 +57,45 @@ namespace LaskaKit::ZivyObraz {
             };
             
             this->client.collectHeaders(headerKeys, 5);
-            this->client.GET();
-
-            this->buf = (uint8_t*)malloc(5000000 * sizeof(uint8_t));
-            // TODO very careful here
-            if (this->buf == NULL) {
-                Serial.println("Memory allocation failed.");
-                return;
-            }
+            int httpCode = this->client.GET();
 
             this->totalRead = 0;
+            int image_type = 0;
             while (this->client.connected()) {
                 size_t available = this->client.getStream().available();
-                // Serial.println(available);
+
                 if (available) {
-                    this->client.getStream().read(this->buf + this->totalRead, available);
-                    this->totalRead += available;
+                    size_t processed = 0;
+
+                    while (processed < available) {
+                        size_t to_process = available - processed < BUFFER_SIZE ? available - processed : BUFFER_SIZE;
+                        printf("READING: %lu bytes\n", to_process);
+                        this->client.getStream().read(this->buf, to_process);
+
+                        if (this->totalRead == 0) {
+                            char one = this->buf[0];
+                            char two = this->buf[1];
+                            if (one == 'B' && two == 'M') {
+                                image_type = 1;
+                            } else if (one == 'Z') {
+                                image_type = 2;
+                            }
+                            printf("%c%c\n", this->buf[0], this->buf[1]);
+                            // TODO -> can deduce type from here
+                        }
+
+                        switch (image_type) {
+                            case 1:
+                                this->processBMP(to_process);
+                                break;
+                            case 2:
+                                this->processZ(2, to_process);
+                                printf("Processing Z\n");
+                                break;
+                        }
+                        this->totalRead += to_process;
+                        processed += to_process;
+                    }
                 }
 
                 if (this->totalRead + available > 5000000) {
@@ -83,33 +112,29 @@ namespace LaskaKit::ZivyObraz {
             }
         }
 
-        void processBMP(ZIVYOBRAZ_DRAW_CALLBACK callback) {
-            BMPDEC decoder;
-            decoder.addCallback(callback);
-            decoder.newData(reinterpret_cast<const uint8_t*>(this->buf), this->totalRead);
+        void processBMP(size_t available) {
+            this->bmpDecoder.newData(reinterpret_cast<const uint8_t*>(this->buf), available);
         }
 
-        void processZ(ZIVYOBRAZ_DRAW_CALLBACK callback, uint8_t type) {
-            ZDEC decoder(800, 480, type);
-            decoder.addCallback(callback);
-            decoder.newData(reinterpret_cast<const uint8_t*>(this->buf), this->totalRead);
+        void processZ(uint8_t type, size_t available) {
+            this->zDecoder.newData(reinterpret_cast<const uint8_t*>(this->buf), available);
         }
 
-        void process(ZIVYOBRAZ_DRAW_CALLBACK callback)
+        void process(size_t available)
         {
             printf("%c%c\n", this->buf[0], this->buf[1]);
             if (this->buf[0] == 'B' && this->buf[1] == 'M') {
-            this->processBMP(callback);
+            this->processBMP(available);
             } else if (this->buf[0] == 'Z') {
                 switch (this->buf[1]) {
                     case '1':
-                        this->processZ(callback, 1);
+                        this->processZ(1, available);
                         break;
                     case '2':
-                        this->processZ(callback, 2);
+                        this->processZ(2, available);
                         break;
                     case '3':
-                        this->processZ(callback, 3);
+                        this->processZ(3, available);
                         break;
                 }
             }

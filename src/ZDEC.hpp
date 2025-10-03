@@ -4,6 +4,7 @@
 #include "zivyobrazclient.hpp"
 
 namespace LaskaKit::ZivyObraz {
+    constexpr size_t Z_MAX_ROW_SIZE = 800;
 
     // class for decoding Zx formats
     class ZDEC
@@ -33,22 +34,21 @@ namespace LaskaKit::ZivyObraz {
         uint16_t width;
         uint16_t height;
         uint8_t type;  // 1/2/3
-        Pixel* rowData;
+        Pixel rowData[Z_MAX_ROW_SIZE];
         uint16_t currentRow;
         uint16_t currentCol;
         uint8_t currentHeader;
         ZIVYOBRAZ_DRAW_CALLBACK callback;
 
     public:
+        StreamingZDEC() = default;
         StreamingZDEC(uint16_t width, uint16_t height, uint8_t type)
             : width(width), height(height), type(type), currentRow(0), currentCol(0), currentHeader(0)
         {
-            this->rowData = new Pixel[width];
         }
 
-        ~StreamingZDEC()
+        virtual ~StreamingZDEC()
         {
-            delete[] rowData;
         }
 
         void reset();

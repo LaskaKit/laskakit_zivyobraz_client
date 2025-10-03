@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstdint>
+#include <memory>
 
 #include "zivyobrazclient.hpp"
 
@@ -57,5 +58,37 @@ namespace LaskaKit::ZivyObraz {
         {
             this->callback = callback;
         }
+    };
+
+    class StreamingBMPDEC
+    {
+    private:
+        BMPHeader header;
+        BMPInfoHeader infoHeader;
+        BMPColorTable colorTable;
+        Pixel rowData[BMP_MAX_ROW_SIZE];
+
+        uint16_t currentRow = 0;
+        uint16_t currentCol = 0;
+        bool headersLoaded = false;
+        Pixel bufferedPixel;
+        uint8_t bufferedPixelIdx;
+
+        ZIVYOBRAZ_DRAW_CALLBACK callback;
+
+    public:
+        StreamingBMPDEC() = default;
+
+        void addCallback(ZIVYOBRAZ_DRAW_CALLBACK callback)
+        {
+            this->callback = callback;
+        }
+        void reset();
+        void newData(const uint8_t* data, size_t datalen);
+
+    private:
+        void newHeaderData(const uint8_t* data, size_t datalen);
+        void newPixelData(const uint8_t* data, size_t datalen);
+
     };
 }
