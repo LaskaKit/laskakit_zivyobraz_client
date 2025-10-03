@@ -48,15 +48,16 @@ namespace LaskaKit::ZivyObraz {
             Serial.printf("Connecting to: %s\n", this->url);
             this->client.begin(this->url);
             
-            const char* headerKeys[5] = {
+            const char* headerKeys[6] = {
                 "Content-Type",
                 "Timestamp",
                 "Sleep",
+                "SleepSeconds",
                 "Rotate",
                 "Data-Length"
             };
             
-            this->client.collectHeaders(headerKeys, 5);
+            this->client.collectHeaders(headerKeys, 6);
             int httpCode = this->client.GET();
 
             this->totalRead = 0;
