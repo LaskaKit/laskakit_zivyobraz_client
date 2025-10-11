@@ -110,6 +110,8 @@ namespace LaskaKit::ZivyObraz {
         {
             if (this->client.hasHeader(name)) {
                 strcpy(buf, this->client.header(name).c_str());
+            } else {
+                strcpy(buf, "");
             }
         }
 
