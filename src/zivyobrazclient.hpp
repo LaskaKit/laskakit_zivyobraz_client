@@ -23,8 +23,8 @@ namespace LaskaKit::ZivyObraz {
 
     struct HttpParam
     {
-        char key[MAX_KEY_LEN];
-        char value[MAX_VALUE_LEN];
+        char key[MAX_KEY_LEN] = "";
+        char value[MAX_VALUE_LEN] = "";
     };
 
     struct HttpParams
