@@ -41,13 +41,12 @@ namespace LaskaKit::ZivyObraz {
     class ZivyobrazClient
     {
     protected:
-        const size_t m_width, m_height;
         HttpParams m_httpParams;
         char m_url[MAX_URL_LENGTH];
-        T_DECODER m_decoder;
+        T_DECODER* m_decoder;
     public:
-        ZivyobrazClient(size_t width, size_t height, T_DECODER& decoder)
-            : m_width(width), m_height(height), m_decoder(decoder)
+        ZivyobrazClient(T_DECODER* decoder)
+            : m_decoder(decoder)
         {}
         virtual ~ZivyobrazClient() = default;
         virtual void addParam(const char* key, const char* value)

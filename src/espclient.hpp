@@ -2,7 +2,6 @@
 #include <HTTPClient.h>
 
 #include "zivyobrazclient.hpp"
-#include "ZDEC.hpp"
 
 namespace LaskaKit::ZivyObraz {
     constexpr size_t BUFFER_SIZE = 8192;  // 2^13
@@ -15,8 +14,8 @@ namespace LaskaKit::ZivyObraz {
         size_t m_totalRead = 0;
 
     public:
-        EspClient(const char* host, size_t width, size_t height, T_DECODER& decoder)
-            : ZivyobrazClient<T_DECODER>(width, height, decoder)
+        EspClient(const char* host, T_DECODER* decoder)
+            : ZivyobrazClient<T_DECODER>(decoder)
         {
             strncpy(this->m_url, host, MAX_URL_LENGTH);
         }
@@ -53,7 +52,7 @@ namespace LaskaKit::ZivyObraz {
                         printf("READING: %lu bytes\n", to_process);
                         m_client.getStream().read(m_requestBuffer, to_process);
 
-                        this->m_decoder.decode(m_requestBuffer, to_process);
+                        this->m_decoder->decode(m_requestBuffer, to_process);
                         m_totalRead += to_process;
                         m_processed += to_process;
                     }
