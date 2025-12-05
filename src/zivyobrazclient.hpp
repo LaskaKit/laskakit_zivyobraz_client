@@ -9,18 +9,6 @@ namespace LaskaKit::ZivyObraz {
     constexpr size_t MAX_KEY_LEN = 20;
     constexpr size_t MAX_URL_LENGTH = 256;
 
-
-    struct Pixel
-    {
-      uint8_t red;
-      uint8_t green;
-      uint8_t blue;
-
-      Pixel(uint8_t red = 0, uint8_t green = 0, uint8_t blue = 0)
-        : red(red), green(green), blue(blue)
-      {}
-    };
-
     struct HttpParam
     {
         char key[MAX_KEY_LEN] = "";
@@ -37,16 +25,13 @@ namespace LaskaKit::ZivyObraz {
       void buildQuery(char* buffer, size_t buflen) const;
     };
 
-    template<class T_DECODER>
     class ZivyobrazClient
     {
     protected:
         HttpParams m_httpParams;
         char m_url[MAX_URL_LENGTH];
-        T_DECODER* m_decoder;
     public:
-        ZivyobrazClient(T_DECODER* decoder)
-            : m_decoder(decoder)
+        ZivyobrazClient()
         {}
         virtual ~ZivyobrazClient() = default;
         virtual void addParam(const char* key, const char* value)
