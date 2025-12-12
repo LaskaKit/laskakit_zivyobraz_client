@@ -1,44 +1,63 @@
 #pragma once
 
-#include <cstdint>
-#include <cstring>
+#include <HTTPClient.h>
 
 namespace LaskaKit::ZivyObraz {
-    constexpr size_t MAX_PARAMS = 15;
-    constexpr size_t MAX_VALUE_LEN = 20;
-    constexpr size_t MAX_KEY_LEN = 20;
     constexpr size_t MAX_URL_LENGTH = 256;
+    constexpr size_t BUFFER_SIZE = 8192;  // 2^13
 
-    struct HttpParam
-    {
-        char key[MAX_KEY_LEN] = "";
-        char value[MAX_VALUE_LEN] = "";
+    // interesting headers to collect
+    constexpr size_t COLLECT_HEADER_LEN = 7;
+    static const char* COLLECT_HEADERS[COLLECT_HEADER_LEN] = {
+        "Content-Type",
+        "Content-Length",
+        "Data-Length"
+        "Timestamp",
+        "Sleep",
+        "SleepSeconds",
+        "PreciseSleep",
+        "Rotate",
     };
 
-    struct HttpParams
+    enum class ContentType
     {
-      HttpParam params[MAX_PARAMS];
-      size_t count = 0;
-
-      bool add(const char* key, const char* value);
-      size_t queryStrLength() const;
-      void buildQuery(char* buffer, size_t buflen) const;
+        APPLICATION_JSON,
+        IMAGE_Z2,
+        IMAGE_Z3,
+        IMAGE_BMP,
+        IMAGE_PNG,
+        TEXT_PLAIN,
+        TEXT_HTML,
+        UNKNOWN,
     };
 
-    class ZivyobrazClient
+    enum class HTTPMethod
     {
-    protected:
-        HttpParams m_httpParams;
+        GET,
+        POST
+    };
+
+    typedef void (*DownloadCallback)(ContentType contentType, const uint8_t* downloadedData, size_t datalen);
+
+    class ZivyObrazClient {
+    private:
+        HTTPClient m_client;
+        uint8_t m_requestBuffer[BUFFER_SIZE];
+        size_t m_totalRead = 0;
+        DownloadCallback downloadCallback;
+
+        char m_baseUrl[50];
         char m_url[MAX_URL_LENGTH];
+        char m_apiKey[20];
+
     public:
-        ZivyobrazClient()
-        {}
-        virtual ~ZivyobrazClient() = default;
-        virtual void addParam(const char* key, const char* value)
-        {
-            this->m_httpParams.add(key, value);
-        }
-        virtual void get() = 0;
-        virtual void getHeader(char* buf, const char* name) = 0;
+        ZivyObrazClient(const char* baseUrl, DownloadCallback downloadCallback);
+        void setApiKey(const char* apiKey);
+        int post(const char* path, const String& jsonPayload);
+        int get(const char* path);
+        bool getHeader(char* buf, const char* name);
+
+    private:
+        int sendRequest(const char* url, const char* method, const String& payload = "");
     };
 }
