@@ -100,24 +100,27 @@ int ZivyObrazClient::sendRequest(const char* url, const char* method, const Stri
             }
 
             this->m_totalRead = 0;
+            uint32_t lastData = millis();
             while (m_client.connected()) {
                 size_t available = m_client.getStream().available();
 
                 if (available) {
-                    size_t m_processed = 0;
-
-                    while (m_processed < available) {
-                        size_t to_process = available - m_processed < BUFFER_SIZE ? available - m_processed : BUFFER_SIZE;
-                        printf("Downloading: %lu bytes\n", to_process);
-                        m_client.getStream().read(m_requestBuffer, to_process);
-
-                        this->downloadCallback(contentType, m_requestBuffer, to_process);
-                        m_totalRead += to_process;
-                        m_processed += to_process;
+                    lastData = millis();
+                    size_t to_process = available < BUFFER_SIZE ? available : BUFFER_SIZE;
+                    size_t actuallyRead = m_client.getStream().read(m_requestBuffer, to_process);
+                    if (actuallyRead > 0) {
+                        this->downloadCallback(contentType, m_requestBuffer, actuallyRead);
+                        m_totalRead += actuallyRead;
                     }
+                } else {
+                    if (millis() - lastData > 5000) {
+                        log_e("Download timeout after %lu bytes", m_totalRead);
+                        break;
+                    }
+                    yield();
                 }
-                delay(1);
             }
+            log_i("Download complete: %lu bytes", m_totalRead);
 
             m_client.end();
             return httpCode;
