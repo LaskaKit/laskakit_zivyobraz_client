@@ -189,8 +189,10 @@ void DecodeZ(struct ZDecoder* decoder, const uint8_t* data, size_t datalen);
 class ZDec
 {
 private:
-public:
   ZDecoder _decoder;
+public:
+
+  ZDec() : _decoder{} {};
 
   /**
    * @param width        Image width in pixels.
@@ -198,10 +200,10 @@ public:
    * @param rowBuffer    Caller-allocated buffer of at least @p width bytes.
    * @param rowCallback  Called after each complete row is written to @p rowBuffer.
    */
-  ZDec(uint16_t width, uint16_t height, uint8_t* rowBuffer, ZDecoderRowCallback rowCallback)
-    : _decoder(CreateZDecoder(width, height, rowBuffer, rowCallback))
-  {}
-
+  void init(uint16_t width, uint16_t height, uint8_t* rowBuffer, ZDecoderRowCallback rowCallback)
+  {
+      _decoder = CreateZDecoder(width, height, rowBuffer, rowCallback);
+  }
   /**
    * @brief Decode a chunk of Z-format data.  May be called incrementally.
    * @param data     Pointer to the data chunk (must include the header on the first call).

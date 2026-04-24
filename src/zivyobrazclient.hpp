@@ -46,14 +46,17 @@ namespace LaskaKit::ZivyObraz {
         char m_apiKey[MAX_API_KEY_LENGTH];
 
     public:
+
+        ZivyObrazClient() = default;
+
         /**
-         * @brief Constructs a client bound to a server base URL.
+         * @brief Sets a server base URL.
          *
          * @param baseUrl  Null-terminated base URL of the ZivyObraz server.
          *                 Truncated silently if longer than
          *                 MAX_BASE_URL_LENGTH - 1 characters.
          */
-        explicit ZivyObrazClient(const char* baseUrl);
+        void setBaseUrl(const char* baseUrl);
 
         /**
          * @brief Registers a content handler for a specific media type.

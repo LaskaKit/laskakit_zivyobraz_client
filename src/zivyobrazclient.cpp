@@ -6,7 +6,7 @@
 namespace {
     // interesting headers to collect
     constexpr size_t COLLECT_HEADER_LEN = 8;
-    const char* const COLLECT_HEADERS[COLLECT_HEADER_LEN] = {
+    const char* COLLECT_HEADERS[COLLECT_HEADER_LEN] = {
         "Content-Type",
         "Content-Length",
         "Data-Length",
@@ -54,7 +54,8 @@ namespace {
 
 namespace LaskaKit::ZivyObraz {
 
-ZivyObrazClient::ZivyObrazClient(const char* baseUrl)
+
+void ZivyObrazClient::setBaseUrl(const char* baseUrl)
 {
     strncpy(m_baseUrl, baseUrl, sizeof(m_baseUrl));
     m_baseUrl[sizeof(m_baseUrl) - 1] = '\0';
@@ -99,6 +100,8 @@ ContentHandler ZivyObrazClient::selectHandler()
     }
 
     const String ct = m_client.header("Content-Type");
+    log_i("Content-Type=%s", ct.c_str());
+
     for (const auto& entry : ctLookup) {
         if (ct.startsWith(entry.mime)) {
             return m_handlers[static_cast<size_t>(entry.type)];
@@ -110,10 +113,12 @@ ContentHandler ZivyObrazClient::selectHandler()
 
 int ZivyObrazClient::readStream()
 {
+    log_v("readStream - m_active=%d", m_active);
     if (!m_active) { return -1; }
 
-    ContentHandler handler = this->selectHandler();
+    ContentHandler handler = selectHandler();
     if (!handler) {
+        log_e("Handler not set.");
         return -1;
     }
 
@@ -149,6 +154,8 @@ int ZivyObrazClient::readStream()
 
 int ZivyObrazClient::sendRequest(const char* url, const char* method, const String& payload)
 {
+    log_i("%s %s", method, url);
+    log_d("%s", payload.c_str());
     m_client.begin(url);
     m_active = true;
     m_client.collectHeaders(COLLECT_HEADERS, COLLECT_HEADER_LEN);
