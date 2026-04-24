@@ -8,6 +8,11 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 
+extern const uint16_t z2ColorToRGB565Lut[4];
+extern const uint16_t z2GrayscaleToRGB565Lut[4];
+extern const uint16_t z3ColorToRGB565Lut[8];
+extern const uint16_t z3GrayscaleToRGB565Lut[8];
+
 struct RLEByte {
   union {
     uint8_t raw;

@@ -62,9 +62,9 @@ bool ZivyObrazClient::getHeader(char* buf, const char* name)
 int ZivyObrazClient::sendRequest(const char* url, const char* method, const String& payload)
         {
             Serial.println("Sending a request to server.");
-            Serial.printf("Method: %s", method);
-            Serial.printf("Url: %s", url);
-            Serial.printf("Payload: %s", payload);
+            Serial.printf("Method: %s\n", method);
+            Serial.printf("Url: %s\n", url);
+            Serial.printf("Payload: %s\n", payload);
 
             m_client.begin(url);
             m_client.collectHeaders(COLLECT_HEADERS, COLLECT_HEADER_LEN);
