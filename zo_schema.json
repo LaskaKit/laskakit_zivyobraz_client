@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ZivyObraz minimal API schema",
+  "type": "object",
+  "required": ["apiVersion", "network", "display"],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "network": {
+      "type": "object",
+      "required": ["mac"],
+        "description": "MAC address of the sender",
+        "mac": {
+          "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+        }
+    },
+    "display": {
+      "type": "object",
+      "required": ["width", "height", "colorType"],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "colorType": {
+          "description": "Defines what colors does the display support.",
+          "enum": ["BW", "4G", "8G", "RBW", "YBW", "4C", "7C"]
+        }
+      }
+    }
+  }
+}
