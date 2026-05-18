@@ -2,6 +2,7 @@
 
 #include "zivyobrazclient.hpp"
 
+using namespace LaskaKit::ZivyObraz;
 
 namespace {
     // interesting headers to collect
@@ -20,14 +21,30 @@ namespace {
     const struct {
         const char*  mime;
         LaskaKit::ZivyObraz::ContentType  type;
-    } ctLookup[] = {
-        { "application/json", LaskaKit::ZivyObraz::ContentType::APPLICATION_JSON },
-        { "image/z2",         LaskaKit::ZivyObraz::ContentType::IMAGE_Z2         },
-        { "image/z3",         LaskaKit::ZivyObraz::ContentType::IMAGE_Z3         },
-        { "image/bmp",        LaskaKit::ZivyObraz::ContentType::IMAGE_BMP        },
-        { "image/png",        LaskaKit::ZivyObraz::ContentType::IMAGE_PNG        },
-        { "text/plain",       LaskaKit::ZivyObraz::ContentType::TEXT_PLAIN       },
-        { "text/html",        LaskaKit::ZivyObraz::ContentType::TEXT_HTML        },
+    } contentTypeLookup[] = {
+        { "application/json",         ContentType::APPLICATION_JSON         },
+        { "image/z2",                 ContentType::IMAGE_Z2                 },
+        { "image/z3",                 ContentType::IMAGE_Z3                 },
+        { "image/bmp",                ContentType::IMAGE_BMP                },
+        { "image/png",                ContentType::IMAGE_PNG                },
+        { "text/plain",               ContentType::TEXT_PLAIN               },
+        { "text/html",                ContentType::TEXT_HTML                },
+        { "application/octet-stream", ContentType::APPLICATION_OCTET_STREAM },
+    };
+
+
+    // What to declare in the request
+    const struct {
+        const char* name;
+        ColorType type;
+    } colorTypeLookup[] = {
+        {"BW", ColorType::BW},
+        {"GRAYSCALE", ColorType::G4},
+        {"8G", ColorType::G8},
+        {"RBW", ColorType::BWR},
+        {"YBW", ColorType::BWY},
+        {"4C", ColorType::BWRY},
+        {"7C", ColorType::C7},
     };
 
 
@@ -102,7 +119,7 @@ ContentHandler ZivyObrazClient::selectHandler()
     const String ct = m_client.header("Content-Type");
     log_i("Content-Type=%s", ct.c_str());
 
-    for (const auto& entry : ctLookup) {
+    for (const auto& entry : contentTypeLookup) {
         if (ct.startsWith(entry.mime)) {
             return m_handlers[static_cast<size_t>(entry.type)];
         }

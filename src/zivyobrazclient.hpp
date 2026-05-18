@@ -19,9 +19,23 @@ namespace LaskaKit::ZivyObraz {
         IMAGE_PNG,
         TEXT_PLAIN,
         TEXT_HTML,
+        APPLICATION_OCTET_STREAM,
         UNKNOWN,
-        COUNT = 8,
+        COUNT = 9,
     };
+
+    enum class ColorType
+    {
+        BW,
+        G4,
+        G8,
+        BWR,
+        BWY,
+        BWRY,
+        C4,
+        C7,
+    };
+
 
     /**
      * @brief Callback invoked for each chunk of data read from the response stream.
