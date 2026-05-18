@@ -179,6 +179,7 @@ int ZivyObrazClient::sendRequest(const char* url, const char* method, const Stri
     log_i("%s %s", method, url);
     log_d("%s", payload.c_str());
     m_client.begin(url);
+    m_client.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     m_active = true;
     m_client.collectHeaders(COLLECT_HEADERS, COLLECT_HEADER_LEN);
     m_client.addHeader("X-API-key", m_apiKey);
