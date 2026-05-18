@@ -140,6 +140,7 @@ int ZivyObrazClient::readStream()
     }
 
     int totalRead = 0;
+    int contentLength = m_client.getSize();
     uint32_t lastData = millis();
     while (m_client.connected()) {
         size_t available = m_client.getStream().available();
@@ -156,6 +157,10 @@ int ZivyObrazClient::readStream()
                 totalRead += actuallyRead;
             }
         } else {
+            if (contentLength > 0 && totalRead >= contentLength) {
+                log_i("Download complete: %d bytes", totalRead);
+                break;
+            }
             if (millis() - lastData > 5000) {
                 log_e("Download timeout after %d bytes", totalRead);
                 break;
