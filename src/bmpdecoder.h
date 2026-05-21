@@ -10,7 +10,7 @@ extern "C" {
 
 /**
  * @defgroup bmpdecoder BMPDecoder
- * @brief Uncompressed BMP image decoder (4 BPP and 24 BPP) with nearest-palette-colour mapping.
+ * @brief BMP image decoder (4 BPP uncompressed, 4 BPP RLE4, 24 BPP uncompressed) with nearest-palette-colour mapping.
  *
  * Incremental streaming decoder — @ref DecodeBMP may be called with
  * arbitrarily-sized chunks.  Each completed row is written as palette
@@ -33,7 +33,7 @@ enum BMPDecoderState {
 enum BMPDecoderError {
     BMP_ERROR_NONE,       /**< No error. */
     BMP_ERROR_SIGNATURE,  /**< Missing "BM" magic bytes. */
-    BMP_ERROR_FORMAT,     /**< Unsupported format (not 24-bit uncompressed). */
+    BMP_ERROR_FORMAT,     /**< Unsupported format (supported: 4 BPP uncompressed/RLE4, 24 BPP uncompressed). */
 };
 
 struct BMPDecoder;
@@ -77,11 +77,20 @@ struct BMPDecoder {
 
     /* pixel data state */
     uint32_t bytesToSkip;   /**< Extra bytes between header and pixel data. */
+    uint8_t  compression;   /**< 0 = uncompressed, 2 = BI_RLE4. */
     uint8_t  pixelBuf[3];   /**< Accumulates BGR bytes for one 24 BPP pixel. */
     uint8_t  pixelBufIdx;
-    uint8_t  rowPadding;    /**< Padding bytes appended to each BMP row. */
+    uint8_t  rowPadding;    /**< Padding bytes appended to each BMP row (0 for RLE4). */
     uint8_t  paddingLeft;   /**< Padding bytes remaining in the current row. */
     uint8_t  bottomUp;      /**< 1 if BMP rows are stored bottom-to-top. */
+
+    /* RLE4 sub-state (active only when compression == 2) */
+    uint8_t  rle4State;       /**< RLE4 decoding sub-state. */
+    uint8_t  rleCount;        /**< Command first byte (run count). */
+    uint8_t  rlePixLeft;      /**< Pixels remaining in an absolute run. */
+    uint8_t  rleAbsBytesLeft; /**< Raw bytes remaining in absolute mode. */
+    uint8_t  rleAbsPad;       /**< 1 if a word-alignment byte follows absolute data. */
+    uint8_t  rleDeltaX;       /**< Horizontal offset from a delta escape. */
 
     /* output */
     uint8_t*        rowBuffer;    /**< Caller-supplied buffer; at least @c width bytes. */
