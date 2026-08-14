@@ -77,7 +77,7 @@ void setup()
     ]
 })";
 
-    int code = client.post("", payload);
+    int code = client.post("", payload.c_str());
     if (code == 200) {
         int bytes = client.readStream();
         Serial.printf("Received %d bytes\n", bytes);

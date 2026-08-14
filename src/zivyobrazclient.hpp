@@ -1,6 +1,9 @@
 #pragma once
 
-#include <HTTPClient.h>
+#include <cstddef>
+#include <cstdint>
+
+#include "esp_http_client.h"
 
 namespace LaskaKit::ZivyObraz {
     constexpr size_t MAX_URL_LENGTH = 256;
@@ -9,6 +12,8 @@ namespace LaskaKit::ZivyObraz {
     constexpr size_t MAX_BASE_URL_LENGTH = 51;
     /// Maximum length of the API key string (including null terminator).
     constexpr size_t MAX_API_KEY_LENGTH = 21;
+    /// Maximum length of a collected response header value (including null terminator).
+    constexpr size_t MAX_HEADER_VALUE_LENGTH = 64;
 
     enum class ContentType
     {
@@ -48,20 +53,36 @@ namespace LaskaKit::ZivyObraz {
     typedef bool (*ContentHandler)(const uint8_t* downloadedData, size_t datalen);
 
     class ZivyObrazClient {
+    public:
+        /// Number of response headers collected per request; see getHeader().
+        static constexpr size_t COLLECT_HEADER_LEN = 8;
+
     private:
-        HTTPClient m_client;
+        esp_http_client_handle_t m_client = nullptr;
         bool m_active = false;
         uint8_t m_requestBuffer[BUFFER_SIZE];
 
         ContentHandler m_handlers[static_cast<size_t>(ContentType::COUNT)] = {};
 
-        char m_baseUrl[MAX_BASE_URL_LENGTH];
-        char m_url[MAX_URL_LENGTH];
-        char m_apiKey[MAX_API_KEY_LENGTH];
+        char m_baseUrl[MAX_BASE_URL_LENGTH] = {};
+        char m_url[MAX_URL_LENGTH] = {};
+        char m_apiKey[MAX_API_KEY_LENGTH] = {};
+
+        char m_headerValues[COLLECT_HEADER_LEN][MAX_HEADER_VALUE_LENGTH] = {};
+        bool m_headerPresent[COLLECT_HEADER_LEN] = {};
 
     public:
 
         ZivyObrazClient() = default;
+
+        /// Convenience constructor; equivalent to ZivyObrazClient() followed by setBaseUrl(baseUrl).
+        explicit ZivyObrazClient(const char* baseUrl) { setBaseUrl(baseUrl); }
+
+        ~ZivyObrazClient();
+
+        // Owns a live esp_http_client_handle_t; not safe to copy.
+        ZivyObrazClient(const ZivyObrazClient&) = delete;
+        ZivyObrazClient& operator=(const ZivyObrazClient&) = delete;
 
         /**
          * @brief Sets a server base URL.
@@ -102,16 +123,16 @@ namespace LaskaKit::ZivyObraz {
          *
          * @param path         Request path appended to the base URL
          *                     (e.g. @c "/api/v1/update").
-         * @param jsonPayload  JSON-encoded request body.
-         * @return             HTTP status code, or a negative HTTPClient error code.
+         * @param jsonPayload  Null-terminated JSON-encoded request body.
+         * @return             HTTP status code, or -1 on a transport-level error.
          */
-        int post(const char* path, const String& jsonPayload);
+        int post(const char* path, const char* jsonPayload);
 
         /**
          * @brief Sends an HTTP GET request.
          *
          * @param path  Request path appended to the base URL.
-         * @return      HTTP status code, or a negative HTTPClient error code.
+         * @return      HTTP status code, or -1 on a transport-level error.
          */
         int get(const char* path);
 
@@ -120,7 +141,7 @@ namespace LaskaKit::ZivyObraz {
          *        appropriate ContentHandler.
          *
          * Must be called after a successful post() or get() (HTTP 200).
-         * Blocks until the connection closes or no data arrives for 5 seconds.
+         * Blocks until the connection closes or a read times out.
          *
          * @return Total number of bytes read, or -1 if no handler was found
          *         for the response Content-Type.
@@ -134,15 +155,18 @@ namespace LaskaKit::ZivyObraz {
          *
          * @param buf    Caller-allocated destination buffer.
          * @param buflen The size of the caller-allocated buffer.
-         * @param name   Null-terminated header name (case-insensitive on most
-         *               Arduino HTTP client builds).
+         * @param name   Null-terminated header name (case-insensitive).
          * @return       @c true if the header was present and copied into @p buf;
          *               @c false otherwise (@p buf is left unchanged).
          */
-        bool getHeader(char* buf, size_t buflen, const char* name);
+        bool getHeader(char* buf, size_t buflen, const char* name) const;
 
     private:
-        int sendRequest(const char* url, const char* method, const String& payload = "");
+        int sendRequest(const char* url, esp_http_client_method_t method,
+                         const char* payload, size_t payloadLen);
         ContentHandler selectHandler();
+        void resetHeaders();
+        void storeHeader(const char* key, const char* value);
+        static esp_err_t httpEventHandler(esp_http_client_event_t* evt);
     };
 }

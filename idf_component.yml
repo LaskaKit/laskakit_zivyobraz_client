@@ -1,0 +1,14 @@
+version: "1.0.1"
+description: HTTP client and Z2/Z3 RLE image decoder for zivyobraz.eu e-ink displays.
+url: https://github.com/LaskaKit/laskakit_zivyobraz_client
+repository: https://github.com/LaskaKit/laskakit_zivyobraz_client.git
+issues: https://github.com/LaskaKit/laskakit_zivyobraz_client/issues
+license: GPL-3.0-only
+tags:
+  - eink
+  - display
+  - http-client
+  - zivyobraz
+
+dependencies:
+  idf: ">=5.0"

@@ -108,7 +108,7 @@ void setup()
     ]
 })";
 
-    int code = client.post("", payload);
+    int code = client.post("", payload.c_str());
     if (code == 200) {
         int bytes = client.readStream();
         Serial.printf("Received %d bytes\n", bytes);
@@ -144,4 +144,17 @@ lib_deps =
     https://github.com/LaskaKit/laskakit_zivyobraz_client
 ```
 
-Requires the ESP32 Arduino core (`HTTPClient.h`).
+**ESP-IDF component** — this repo is also a native ESP-IDF component (no Arduino
+required). Either clone it into your project's `components/` directory, add it
+via `EXTRA_COMPONENT_DIRS` in your top-level `CMakeLists.txt`, or add it as a
+git dependency in your project's `idf_component.yml`:
+
+```yaml
+dependencies:
+  laskakit_zivyobraz_client:
+    git: https://github.com/LaskaKit/laskakit_zivyobraz_client.git
+```
+
+`ZivyObrazClient` is built on `esp_http_client`, so it works unchanged whether
+compiled under the Arduino-ESP32 core (which is itself built on ESP-IDF) or a
+plain ESP-IDF project — requires ESP-IDF >= 5.0.

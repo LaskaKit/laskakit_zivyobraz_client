@@ -1,13 +1,17 @@
 #include <cstring>
+#include <strings.h>
+
+#include "esp_log.h"
 
 #include "zivyobrazclient.hpp"
 
 using namespace LaskaKit::ZivyObraz;
 
 namespace {
+    constexpr const char* TAG = "ZivyObrazClient";
+
     // interesting headers to collect
-    constexpr size_t COLLECT_HEADER_LEN = 8;
-    const char* COLLECT_HEADERS[COLLECT_HEADER_LEN] = {
+    const char* const COLLECT_HEADERS[ZivyObrazClient::COLLECT_HEADER_LEN] = {
         "Content-Type",
         "Content-Length",
         "Data-Length",
@@ -34,7 +38,7 @@ namespace {
 
 
     // What to declare in the request
-    const struct {
+    [[maybe_unused]] const struct {
         const char* name;
         ColorType type;
     } colorTypeLookup[] = {
@@ -51,7 +55,7 @@ namespace {
     // based on https://github.com/plageoj/urlencode
     // todo -> this is dangerous as it does not check bounds
     //         user is responsible for providing large enough buffer (encodedMsg)
-    void urlEncode(const char *msg, char* encodedMsg) {
+    [[maybe_unused]] void urlEncode(const char *msg, char* encodedMsg) {
         const char *hex = "0123456789ABCDEF";
         size_t i = 0;
 
@@ -72,6 +76,14 @@ namespace {
 namespace LaskaKit::ZivyObraz {
 
 
+ZivyObrazClient::~ZivyObrazClient()
+{
+    if (m_client) {
+        esp_http_client_cleanup(m_client);
+        m_client = nullptr;
+    }
+}
+
 void ZivyObrazClient::setBaseUrl(const char* baseUrl)
 {
     strncpy(m_baseUrl, baseUrl, sizeof(m_baseUrl));
@@ -84,43 +96,73 @@ void ZivyObrazClient::setApiKey(const char* apiKey)
     m_apiKey[sizeof(m_apiKey) - 1] = '\0';
 }
 
-int ZivyObrazClient::post(const char* path, const String& jsonPayload)
+int ZivyObrazClient::post(const char* path, const char* jsonPayload)
 {
     strncpy(m_url, m_baseUrl, MAX_URL_LENGTH);
-    strncat(m_url, path, MAX_URL_LENGTH - strlen(m_baseUrl) - 1);
-    m_client.addHeader("Content-Type", "application/json");
-    return this->sendRequest(m_url, "POST", jsonPayload);
+    m_url[MAX_URL_LENGTH - 1] = '\0';
+    strncat(m_url, path, MAX_URL_LENGTH - strlen(m_url) - 1);
+    size_t payloadLen = jsonPayload ? strlen(jsonPayload) : 0;
+    return this->sendRequest(m_url, HTTP_METHOD_POST, jsonPayload, payloadLen);
 }
 
 int ZivyObrazClient::get(const char* path)
 {
     strncpy(m_url, m_baseUrl, MAX_URL_LENGTH);
-    strncat(m_url, path, MAX_URL_LENGTH - strlen(m_baseUrl) - 1);
-    return this->sendRequest(m_url, "GET");
+    m_url[MAX_URL_LENGTH - 1] = '\0';
+    strncat(m_url, path, MAX_URL_LENGTH - strlen(m_url) - 1);
+    return this->sendRequest(m_url, HTTP_METHOD_GET, nullptr, 0);
 }
 
-bool ZivyObrazClient::getHeader(char* buf, size_t buflen, const char* name)
+void ZivyObrazClient::resetHeaders()
 {
-    if (m_client.hasHeader(name)) {
-        strncpy(buf, m_client.header(name).c_str(), buflen);
-        buf[buflen - 1] = '\0';
-        return true;
+    memset(m_headerPresent, 0, sizeof(m_headerPresent));
+}
+
+void ZivyObrazClient::storeHeader(const char* key, const char* value)
+{
+    for (size_t i = 0; i < COLLECT_HEADER_LEN; i++) {
+        if (strcasecmp(COLLECT_HEADERS[i], key) == 0) {
+            strncpy(m_headerValues[i], value, MAX_HEADER_VALUE_LENGTH);
+            m_headerValues[i][MAX_HEADER_VALUE_LENGTH - 1] = '\0';
+            m_headerPresent[i] = true;
+            break;
+        }
+    }
+}
+
+esp_err_t ZivyObrazClient::httpEventHandler(esp_http_client_event_t* evt)
+{
+    if (evt->event_id == HTTP_EVENT_ON_HEADER) {
+        auto* self = static_cast<ZivyObrazClient*>(evt->user_data);
+        self->storeHeader(evt->header_key, evt->header_value);
+    }
+    return ESP_OK;
+}
+
+bool ZivyObrazClient::getHeader(char* buf, size_t buflen, const char* name) const
+{
+    for (size_t i = 0; i < COLLECT_HEADER_LEN; i++) {
+        if (m_headerPresent[i] && strcasecmp(COLLECT_HEADERS[i], name) == 0) {
+            strncpy(buf, m_headerValues[i], buflen);
+            buf[buflen - 1] = '\0';
+            return true;
+        }
     }
     return false;
 }
 
 ContentHandler ZivyObrazClient::selectHandler()
 {
-    if (!m_client.hasHeader("Content-Type")) {
-        log_e("Response does not contain 'Content-Type' header");
+    char contentType[MAX_HEADER_VALUE_LENGTH];
+    if (!getHeader(contentType, sizeof(contentType), "Content-Type")) {
+        ESP_LOGE(TAG, "Response does not contain 'Content-Type' header");
         return nullptr;
     }
 
-    const String ct = m_client.header("Content-Type");
-    log_i("Content-Type=%s", ct.c_str());
+    ESP_LOGI(TAG, "Content-Type=%s", contentType);
 
     for (const auto& entry : contentTypeLookup) {
-        if (ct.startsWith(entry.mime)) {
+        if (strncmp(contentType, entry.mime, strlen(entry.mime)) == 0) {
             return m_handlers[static_cast<size_t>(entry.type)];
         }
     }
@@ -130,65 +172,122 @@ ContentHandler ZivyObrazClient::selectHandler()
 
 int ZivyObrazClient::readStream()
 {
-    log_v("readStream - m_active=%d", m_active);
-    if (!m_active) { return -1; }
+    ESP_LOGV(TAG, "readStream - m_active=%d", m_active);
+    if (!m_active || !m_client) { return -1; }
 
     ContentHandler handler = selectHandler();
     if (!handler) {
-        log_e("Handler not set.");
+        ESP_LOGE(TAG, "Handler not set.");
+        esp_http_client_close(m_client);
+        m_active = false;
         return -1;
     }
 
     int totalRead = 0;
-    int contentLength = m_client.getSize();
-    uint32_t lastData = millis();
-    while (m_client.connected()) {
-        size_t available = m_client.getStream().available();
+    int64_t contentLength = esp_http_client_get_content_length(m_client);
+    while (true) {
+        int readLen = esp_http_client_read(m_client, reinterpret_cast<char*>(m_requestBuffer), BUFFER_SIZE);
+        if (readLen < 0) {
+            ESP_LOGE(TAG, "Read error after %d bytes", totalRead);
+            break;
+        }
+        if (readLen == 0) {
+            if (esp_http_client_is_complete_data_received(m_client)) {
+                ESP_LOGI(TAG, "Download complete: %d bytes", totalRead);
+            } else {
+                ESP_LOGW(TAG, "Connection closed early after %d bytes", totalRead);
+            }
+            break;
+        }
 
-        if (available) {
-            lastData = millis();
-            size_t to_process = available < BUFFER_SIZE ? available : BUFFER_SIZE;
-            size_t actuallyRead = m_client.getStream().read(m_requestBuffer, to_process);
-            if (actuallyRead > 0) {
-                if (!handler(m_requestBuffer, actuallyRead)) {
-                    log_e("Handler signalled failure after %d bytes", totalRead);
-                    break;
-                }
-                totalRead += actuallyRead;
-            }
-        } else {
-            if (contentLength > 0 && totalRead >= contentLength) {
-                log_i("Download complete: %d bytes", totalRead);
-                break;
-            }
-            if (millis() - lastData > 5000) {
-                log_e("Download timeout after %d bytes", totalRead);
-                break;
-            }
-            yield();
+        if (!handler(m_requestBuffer, readLen)) {
+            ESP_LOGE(TAG, "Handler signalled failure after %d bytes", totalRead);
+            break;
+        }
+        totalRead += readLen;
+
+        if (contentLength > 0 && totalRead >= contentLength) {
+            ESP_LOGI(TAG, "Download complete: %d bytes", totalRead);
+            break;
         }
     }
-    m_client.end();
+
+    esp_http_client_close(m_client);
     m_active = false;
     return totalRead;
 }
 
 
-int ZivyObrazClient::sendRequest(const char* url, const char* method, const String& payload)
+int ZivyObrazClient::sendRequest(const char* url, esp_http_client_method_t method,
+                                  const char* payload, size_t payloadLen)
 {
-    log_i("%s %s", method, url);
-    log_d("%s", payload.c_str());
-    m_client.begin(url);
-    m_client.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    m_active = true;
-    m_client.collectHeaders(COLLECT_HEADERS, COLLECT_HEADER_LEN);
-    m_client.addHeader("X-API-key", m_apiKey);
-    int httpCode = m_client.sendRequest(method, payload);
-    if (httpCode != 200) {
-        m_client.end();
-        m_active = false;
+    ESP_LOGI(TAG, "%s %s", method == HTTP_METHOD_POST ? "POST" : "GET", url);
+    if (payload) {
+        ESP_LOGD(TAG, "%s", payload);
+    }
+
+    resetHeaders();
+
+    if (m_client) {
+        esp_http_client_cleanup(m_client);
+        m_client = nullptr;
+    }
+
+    esp_http_client_config_t config = {};
+    config.url = url;
+    config.method = method;
+    config.event_handler = httpEventHandler;
+    config.user_data = this;
+    config.disable_auto_redirect = false;
+
+    m_client = esp_http_client_init(&config);
+    if (!m_client) {
+        ESP_LOGE(TAG, "Failed to initialise HTTP client");
+        return -1;
+    }
+
+    esp_http_client_set_header(m_client, "X-API-key", m_apiKey);
+    if (payload) {
+        esp_http_client_set_header(m_client, "Content-Type", "application/json");
+    }
+
+    esp_err_t err = esp_http_client_open(m_client, static_cast<int>(payloadLen));
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Connection failed: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(m_client);
+        m_client = nullptr;
+        return -1;
+    }
+
+    if (payload && payloadLen > 0) {
+        int written = esp_http_client_write(m_client, payload, static_cast<int>(payloadLen));
+        if (written < 0 || static_cast<size_t>(written) != payloadLen) {
+            ESP_LOGE(TAG, "Failed to write request payload");
+            esp_http_client_close(m_client);
+            esp_http_client_cleanup(m_client);
+            m_client = nullptr;
+            return -1;
+        }
+    }
+
+    int64_t contentLength = esp_http_client_fetch_headers(m_client);
+    if (contentLength < 0) {
+        ESP_LOGE(TAG, "Failed to fetch response headers");
+        esp_http_client_close(m_client);
+        esp_http_client_cleanup(m_client);
+        m_client = nullptr;
+        return -1;
+    }
+
+    int httpCode = esp_http_client_get_status_code(m_client);
+    m_active = (httpCode == 200);
+    if (!m_active) {
+        esp_http_client_close(m_client);
+        esp_http_client_cleanup(m_client);
+        m_client = nullptr;
     }
     return httpCode;
 }
+
 
 };  // namespace LaskaKit::ZivyObraz
