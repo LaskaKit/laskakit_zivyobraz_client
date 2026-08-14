@@ -3,50 +3,6 @@
 #include "zdecoder.h"
 #include <stdio.h>
 
-const uint16_t z2ColorToRGB565Lut[4] = {
-    0xFFFF,  // white
-    0x0000,  // black
-    0xF800,  // red
-    0xFFE0,  // yellow
-};
-
-const uint16_t z2GrayscaleToRGB565Lut[4] = {
-    0xFFFF,  // white
-    0x0000,  // black
-    0xAD43,  // light gray
-    0x528A,  // dark gray
-};
-
-const uint16_t z3ColorToRGB565Lut[8] = {
-    0xFFFF,  // white
-    0x0000,  // black
-    0xF800,  // red
-    0xFFE0,  // yellow
-    0x07E0,  // green
-    0x001F,  // blue
-    0xFBE0,  // orange
-    0x7814,  // purple - unexpected
-};
-
-const uint16_t z3GrayscaleToRGB565Lut[8] = {
-    0xFFFF,  // white
-    0x0000,  // black
-    0xAD43,  // light->dark gray
-    0x528A,  // dark->light gray
-    0x2945,  // dark gray
-    0x6B4D,  // dark->light->light gray
-    0x8430,  // light->dark->dark gray
-    0xD6BA,  // light gray
-};
-
-// convert Z color to RGB565 using a lookup table
-// there are default ones but one may provide its own
-// return purple when zColor is bigger than lutlen
-uint16_t ZtoRGB565(uint8_t zColor, const uint16_t* lut, uint8_t lutlen) {
-    if (zColor >= lutlen) { return 0x7814; }  // purple
-    return lut[zColor];
-}
-
 
 struct ZDecoder CreateZDecoder(uint16_t width, uint16_t height, uint8_t* rowBuffer, ZDecoderRowCallback rowCallback)
 {

@@ -18,18 +18,6 @@ extern "C" {
  * @{
  */
 
-/** Z2 color index → RGB565. Order: white, black, red, yellow. */
-extern const uint16_t z2ColorToRGB565Lut[4];
-
-/** Z2 grayscale index → RGB565. Order: white, black, light gray, dark gray. */
-extern const uint16_t z2GrayscaleToRGB565Lut[4];
-
-/** Z3 color index → RGB565. Order: white, black, red, yellow, green, blue, orange, purple. */
-extern const uint16_t z3ColorToRGB565Lut[8];
-
-/** Z3 grayscale index → RGB565. Eight evenly distributed gray shades. */
-extern const uint16_t z3GrayscaleToRGB565Lut[8];
-
 /**
  * @brief One RLE-encoded byte.
  *
@@ -107,7 +95,6 @@ struct ZDecoder;
  *                 is the zero-based index of the row that was just finished.
  *
  * The callback must not modify @c decoder->state or @c decoder->currentRow.
- * Convert indices to RGB565 with @ref ZtoRGB565 inside the callback.
  */
 typedef void (*ZDecoderRowCallback)(const struct ZDecoder* decoder);
 

@@ -17,8 +17,8 @@ void onRow(const ZDecoder* dec)
 {
     // dec->currentRow is the row that was just finished (zero-based).
     for (uint16_t x = 0; x < WIDTH; x++) {
-        uint16_t rgb565 = ZtoRGB565(dec->rowBuffer[x], z2ColorToRGB565Lut, 4);
-        // displayWritePixel(x, dec->currentRow, rgb565);
+        uint8_t color = dec->rowBuffer[x];
+        // displayWritePixel(x, dec->currentRow, color);
     }
 }
 

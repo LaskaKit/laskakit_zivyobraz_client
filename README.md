@@ -11,11 +11,9 @@ The library has two independent parts:
 
 ## Z image formats
 
-**Z2** — 2-bit RLE: 4 colors, 6-bit run length per byte.  
-**Z3** — 3-bit RLE: 8 colors, 5-bit run length per byte.  
+**Z2** — 2-bit RLE: 4 colors, 6-bit run length per byte.
+**Z3** — 3-bit RLE: 8 colors, 5-bit run length per byte.
 Both streams start with a 2-byte ASCII header (`"Z2"` or `"Z3"`) followed by raw RLE bytes.
-
-The decoder outputs raw color indices row by row via a callback. Convert indices to RGB565 with `ZtoRGB565()` and the built-in lookup tables (`z2ColorToRGB565Lut`, `z3ColorToRGB565Lut`, or their grayscale variants), or supply your own.
 
 ## Response headers
 
